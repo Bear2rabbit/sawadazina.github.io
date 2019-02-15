@@ -887,7 +887,7 @@
      margin: 10px auto 0;
  }
 
- ..ab_box .avatar img {
+ .ab_box .avatar img {
      width: 100px;
      height: 100px
  }
