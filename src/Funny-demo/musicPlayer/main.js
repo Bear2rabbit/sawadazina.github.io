@@ -5,7 +5,6 @@
   outcanvas.width = canvas.width;
   outcanvas.height = canvas.height / 2;
   var octx = outcanvas.getContext('2d');
-
   // audioSource 为音频源，bufferSource为buffer源
   var audioSource, bufferSource;
 
@@ -28,9 +27,12 @@
 
   //计时器
   var RAF = (function() {
-    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function(callback) {
-        window.setTimeout(callback, 1000 / 60);
-      };
+    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || 
+    window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
+     function(callback) {
+       console.log(callback);
+       
+       window.setTimeout(callback, 1000 / 60);};
   })();
 
   //播放音乐
@@ -133,7 +135,6 @@
 
     stop: function() {
       var ismuti = !!gainnode.gain.value;
-
       if (!ismuti) {
         gainnode.gain.value = 0;
       }
@@ -224,8 +225,7 @@
 
   //绘制音谱的参数
   var rt_array = [],	//用于存储柱形条对象
-    rt_length = 30;		//规定有多少个柱形条
-
+      rt_length = 30;		//规定有多少个柱形条
   var grd = ctx.createLinearGradient(0, 110, 0, 270);
   grd.addColorStop(0, "red");
   grd.addColorStop(0.3, "yellow");
@@ -279,7 +279,8 @@
     } else {
       showTxt("音频解码中...")
     }
-
+    console.log(RAF);
+    
     RAF(animate);
   }
 
