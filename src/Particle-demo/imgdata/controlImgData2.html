@@ -29,6 +29,8 @@
           this.tz = Math.random() * focallength * 2 - focallength;
           this.paint();
         });
+        console.log(dots);
+        
         animate();
       }
 
@@ -103,18 +105,33 @@
 
     function getimgData(text) {
       drawText(text);
+      // 将要被提取的图像数据矩形区域的左上角 x 坐标--0
+      // 将要被提取的图像数据矩形区域的左上角 y 坐标--0
+      // 将要被提取的图像数据矩形区域的宽度--canvas.width
+      // 将要被提取的图像数据矩形区域的高度--canvas.height
       var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+      console.log(imgData);
+      //而获取到的imgData就是一个存放着制定矩形中所有像素数组的数组，第一个像素的R是imgData[0]，G是imgData[1]，
+      ///B是imgData[2]，A则是imgData[3]，第二个像素的R是imgData[4]，G是imgData[5]，B是imgData[6]，
+      //A则是imgData[7]。。。以此类推。然后，既然我们已经获取到了所有像素里的rgba参数了，我们也就可以很简单的对这些参数进行更改，
+      //然后再将更改后的imgData通过putImageData()方法贴到画布上。像素处理完毕。就是如此简单
       context.clearRect(0, 0, canvas.width, canvas.height);
       var dots = [];
       for (var x = 0; x < imgData.width; x += 6) {
         for (var y = 0; y < imgData.height; y += 6) {
           var i = (y * imgData.width + x) * 4;
-          if (imgData.data[i] >= 128) {
-            var dot = new Dot(x - 3, y - 3, 0, 3);
+    
+          
+          if (imgData.data[i] >= 128) {// 获取到imgData后，通过两个循环，获得透明度大于128的，也就是有颜色的像素，
+            var dot = new Dot(x - 3, y - 3, 0, 3); // 然后实例化一个粒子对象，存入一个粒子数组中保存，
             dots.push(dot);
+          
+            
           }
         }
       }
+      console.log(dots);
+      
       return dots;
     }
 
@@ -130,10 +147,10 @@
 
 
     var Dot = function(centerX, centerY, centerZ, radius) {
-      this.dx = centerX;
+      this.dx = centerX; //保存原来的位置
       this.dy = centerY;
       this.dz = centerZ;
-      this.tx = 0;
+      this.tx = 0;       //保存粒子聚合后又飞散开的位置
       this.ty = 0;
       this.tz = 0;
       this.z = centerZ;
