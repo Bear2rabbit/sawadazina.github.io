@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, 
+    initial-scale=1.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta id="theme-color" name="theme-color" content="#fff">
+    <base target="_blank">
+    <title>Media Recorder API Demo</title>
+    <style>
+        a#downloadLink {
+            display: block;
+            margin: 0 0 1em 0;
+            min-height: 1.2em;
+        }
+
+        p#data {
+            min-height: 6em;
+        }
+
+        img {
+            width: 100px;
+            height: 100px;
+        }
+
+        #video1 {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div style="text-align:center;">
+            <video controls autoplay id="video1"></video><br>
+            <canvas id="canvas" width="500px" height="500px"></canvas><br>
+            <canvas id="canvas2" width="500px" height="500px"></canvas><br>
+            <button id="rec" onclick="onBtnRecordClicked()">Record</button>
+            <button id="pauseRes" onclick="onPauseResumeClicked()" disabled>Pause</button>
+            <button id="stop" onclick="onBtnStopClicked()" disabled>Stop</button>
+        </div>
+        <a id="downloadLink" download="mediarecorder.webm" name="mediarecorder.webm" href></a>
+        <p id="data"></p>
+
+
+    </div>
+
+</body>
+<script src="./jquery-3.3.1.js"></script>
+<script src="opencv.js" type="text/javascript"></script>
+<script>
+    var recBtn = document.querySelector('button#rec');
+    var pauseResBtn = document.querySelector('button#pauseRes');
+    var stopBtn = document.querySelector('button#stop');
+
+    var videoElement = document.querySelector('#video1');
+    var dataElement = document.querySelector('#data');
+    var downloadLink = document.querySelector('a#downloadLink');
+    var aCanvas = document.getElementById('canvas');
+    var aCanvas2 = document.getElementById('canvas2');
+    var ctx = aCanvas.getContext('2d');
+    var ctx2 = aCanvas2.getContext('2d');
+    videoElement.controls = false;
+    var oldData = []
+    function errorCallback(error) {
+        console.log('navigator.getUserMedia error: ', error);
+    }
+    var mediaRecorder;
+    var chunks = [];
+    var count = 0;
+
+    var wsurl = "ws://10.90.9.20:9080/RDConsumer/websocket"
+    var ws = null;
+
+    function createWs() {
+        var url = wsurl;
+        if ('WebSocket' in window) {
+            ws = new WebSocket(url);
+        } else if ('MozWebSocket' in window) {
+            ws = new MozWebSocket(url);
+        } else {
+            console.log("您的浏览器不支持WebSocket。");
+            return;
+        }
+    }
+    function init() {
+        if (ws != null) {
+            console.log("现已连接");
+            return;
+        }
+        createWs();
+        ws.onopen = function () {
+            //设置发信息送类型为：ArrayBuffer  
+            // ws.binaryType = "arraybuffer";
+        }
+        ws.onmessage = function (e) {
+            console.log(e.data.toString());
+        }
+        ws.onclose = function (e) {
+            console.log("onclose: closed");
+            ws = null;
+            createWs(); //这个函数在这里之所以再次调用，是为了解决视频传输的过程中突发的连接断开问题。
+        }
+        ws.onerror = function (e) {
+            console.log("onerror: error", e);
+            ws = null;
+            createWs(); //同上面的解释
+        }
+    }
+
+    $(document).ready(function () {
+        // init();
+    })
+    var mediaStreamTrack,
+        timer
+    var data = {
+        x: 160,
+        y: 100,
+        w: 230,
+        h: 230
+    }
+    var saveData=[]
+    
+    function render() {
+        if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+            ctx.drawImage(videoElement, 0, 0, 500, 500);
+            ctx.strokeStyle = "skyblue"
+            ctx.strokeRect(data.x * Math.random(), data.y * Math.random(), data.w, data.h);
+            ctx.font = "30px Arial";
+            ctx.fillStyle = 'red'
+            ctx.fillText("Hello", data.x + 100, data.y);
+            let mat = cv.imread('canvas');
+             saveData.push(mat)
+             mat.delete()
+             console.log(saveData);
+             
+            // $("body").append('<img src="'+aCanvas.toDataURL("image/png")+'" alt="">')
+            // aCanvas.toBlob(function (blob) {
+            //     // ws.send(blob);
+            //     // console.log(blob);
+
+            //     var newImg = document.createElement("img"),
+            //         url = URL.createObjectURL(blob);
+            //     newImg.onload = function () {
+            //         URL.revokeObjectURL(url);
+            //     };
+            //     newImg.src = url;
+            //     newImg.onload=function(){
+            //         let mat = cv.imread('canvas');
+            //         // console.log(mat.data);
+            //         saveData.push(cv.imread(newImg))
+            //         // cv.imshow('canvas2',mat);
+            //     }
+                
+
+            //     // cv.imshow（'canvasOutput'，mat）;
+            //     // mat.delete();
+            //     // document.body.appendChild(newImg);
+            //     // var rand = Math.floor((Math.random() * 10000000));
+            //     // var name = "video_" + rand + ".jpg";
+            //     // var html = '<a  download="' + name + '" name="' + name + '" href="' + URL.createObjectURL(blob) + '" id="dd' + count + '">down</a>'
+            //     // $("body").append(html)
+            // }, "image/jpeg");
+        }
+        timer = requestAnimationFrame(render);
+
+    }
+    // timer=setInterval(function(){
+    //     render()
+    // },100)
+    function onBtnStopClicked() {
+        cancelAnimationFrame(timer)
+        videoElement.controls = true;
+        recBtn.disabled = false;
+        pauseResBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+    function startRecording(stream) {
+        mediaStreamTrack = typeof stream.stop === 'function' ? stream : stream.getTracks()[1];
+        videoElement.srcObject = stream;
+        videoElement.play();
+        render();
+        setTimeout(() => {
+            console.log(saveData[0]);
+
+            // cv.imshow('canvas2', saveData[0]);
+            // setInterval(() => {
+            //     // cv.imshow('canvas2', saveData[count]);
+            //     count++
+            // }, 17);
+        }, 5000);
+        pauseResBtn.textContent = "Pause";
+    }
+
+    //点击按钮，启动视频流的采集。重点是getUserMedia函数使用。本案例中，视频采集的入口，是点击页面上的record按钮，也就是下面这个函数的逻辑。
+    function onBtnRecordClicked() {
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                width: 120000, height: 70000,
+                frameRate: { ideal: 10, max: 15 }
+            }
+        }).then(startRecording).catch(errorCallback)
+        recBtn.disabled = true;
+        pauseResBtn.disabled = false;
+        stopBtn.disabled = false;
+    }
+
+
+
+
+
+
+
+</script>
+
+</html>
