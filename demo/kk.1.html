@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta id="theme-color" name="theme-color" content="#fff">
+    <base target="_blank">
+    <title>Media Recorder API Demo</title>
+    <style>
+        a#downloadLink {
+            display: block;
+            margin: 0 0 1em 0;
+            min-height: 1.2em;
+        }
+
+        p#data {
+            min-height: 6em;
+        }
+
+        img {
+            width: 100px;
+            height: 100px;
+        }
+        #video1{
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <div style="text-align:center;">
+            <video controls autoplay id="video1"></video><br>
+            <canvas id="canvas" width="500" height="500"></canvas>
+            img
+            <button id="rec" onclick="onBtnRecordClicked()">Record</button>
+            <button id="pauseRes" onclick="onPauseResumeClicked()" disabled>Pause</button>
+            <button id="stop" onclick="onBtnStopClicked()" disabled>Stop</button>
+        </div>
+        <a id="downloadLink" download="mediarecorder.webm" name="mediarecorder.webm" href>ddddddddd</a>
+        <p id="data"></p>
+       
+        
+      
+    </div>
+</body>
+<script src="./jquery-3.3.1.js"></script>
+<script>
+    var recBtn = document.querySelector('button#rec');
+    var pauseResBtn = document.querySelector('button#pauseRes');
+    var stopBtn = document.querySelector('button#stop');
+
+    var videoElement = document.querySelector('#video1');
+    var dataElement = document.querySelector('#data');
+    var downloadLink = document.querySelector('a#downloadLink');
+    var aCanvas = document.getElementById('canvas');
+    var ctx = aCanvas.getContext('2d');
+    videoElement.controls = false;
+    var oldData = []
+    function errorCallback(error) {
+        console.log('navigator.getUserMedia error: ', error);
+    }
+    var mediaRecorder;
+    var chunks = [];
+    var count = 0;
+
+    var wsurl = "ws://10.90.9.20:9080/RDConsumer/websocket"
+    var ws = null;
+
+    function createWs() {
+        var url = wsurl;
+        if ('WebSocket' in window) {
+            ws = new WebSocket(url);
+        } else if ('MozWebSocket' in window) {
+            ws = new MozWebSocket(url);
+        } else {
+            console.log("您的浏览器不支持WebSocket。");
+            return;
+        }
+    }
+    function init() {
+        if (ws != null) {
+            console.log("现已连接");
+            return;
+        }
+        createWs();
+        ws.onopen = function () {
+            //设置发信息送类型为：ArrayBuffer  
+            ws.binaryType = "arraybuffer";
+        }
+        ws.onmessage = function (e) {
+            console.log(e.data.toString());
+        }
+        ws.onclose = function (e) {
+            console.log("onclose: closed");
+            ws = null;
+            createWs(); //这个函数在这里之所以再次调用，是为了解决视频传输的过程中突发的连接断开问题。
+        }
+        ws.onerror = function (e) {
+            console.log("onerror: error");
+            ws = null;
+            createWs(); //同上面的解释
+        }
+    }
+
+    $(document).ready(function () {
+        // init();
+    })
+    var mediaStreamTrack
+    function startRecording(stream) {
+        mediaStreamTrack = typeof stream.stop === 'function' ? stream : stream.getTracks()[1];
+        log('Start recording...');
+        videoElement.srcObject = stream;
+        videoElement.play();
+        mediaRecorder = new MediaRecorder(stream);
+        pauseResBtn.textContent = "Pause";
+        // 开始录制媒体, 这个方法调用时可以通过给timeslice参数设置一个毫秒值, 如果设置这个毫秒值, 那么录制的媒体会按照你设置的值进行分割成一个个单独的区块, 而不是以默认的方式录制一个非常大的整块内容.
+        mediaRecorder.start(10);
+        // console.log(stream);
+
+        var url = window.URL || window.webkitURL;
+        
+       
+        //这个地方，是视频数据捕获好了后，会触发MediaRecorder一个dataavailable的Event，在这里做视频数据的采集工作，主要是基于Blob进行转写，利用FileReader进行读取。FileReader一定
+        //要注册loadend的监听器，或者写onload的函数。在loadend的监听函数里面，进行格式转换，方便websocket进行数据传输，因为websocket的数据类型支持blob以及arrayBuffer，我们这里用
+        //的是arrayBuffer，所以，将视频数据的Blob转写为Unit8Buffer，便于websocket的后台服务用ByteBuffer接收。
+        mediaRecorder.ondataavailable = function (e) {
+            //log('Data available...');
+            //console.log(e.data);
+            //console.log(e.data.type);
+            // console.log(e);
+            chunks.push(e.data);
+            ctx.drawImage(videoElement, 0, 0, 640, 480);
+          
+            oldData.push(aCanvas.toDataURL("image/png"))
+             
+            $("body").append('<img src="" alt="">')
+           
+            var blob = new Blob([e.data], { type: "image/png" })
+            var html='<a  download="dd" name="" href id="dd'+count+'"></a>'
+            // $("img")[count].src= oldData[count]
+            console.log(count);
+            
+             $("body").append(html)
+            // console.log($("#dd"+count));
+             aCanvas.toBlob(function (blob) {
+                 console.log(blob);
+                 
+                $("img")[count].src = URL.createObjectURL(blob);
+               $('#dd' + count)[0].href = URL.createObjectURL(blob);
+            }, "image/png");
+            //  $('#dd' + count)[0].href = URL.createObjectURL(blob);
+          
+             $('#dd'+ count)[0].innerHTML = 'Download video file';
+            var rand = Math.floor((Math.random() * 10000000));
+            var name = "video_" + rand + ".png";
+
+            $('#dd'+ count)[0].setAttribute("download", name);
+            $('#dd'+ count)[0].setAttribute("name", name);
+           
+           count++
+           
+           
+            // console.log(oldData);
+
+
+            var reader = new FileReader();
+            reader.addEventListener("loadend", function () {
+                //reader.result是一个含有视频数据流的Blob对象
+                var buf = new Uint8Array(reader.result);
+                // console.log(reader.result);
+                if (reader.result.byteLength > 0) {        //加这个判断，是因为有很多数据是空的，这个没有必要发到后台服务器，减轻网络开销，提升性能吧。
+                    // ws.send(buf);
+                }
+            });
+            reader.readAsArrayBuffer(e.data);
+        };
+
+        mediaRecorder.onerror = function (e) {
+            log('Error: ' + e);
+        };
+        mediaRecorder.onstart = function () {
+            log('Started & state = ' + mediaRecorder.state);
+        };
+        mediaRecorder.onstop = function () {
+            log('Stopped  & state = ' + mediaRecorder.state);
+            var blob = new Blob(chunks, { type: "video/webm" });
+            chunks = [];
+            var videoURL = window.URL.createObjectURL(blob);
+            downloadLink.href = videoURL;
+            videoElement.src = videoURL;
+            downloadLink.innerHTML = 'Download video file';
+            var rand = Math.floor((Math.random() * 10000000));
+            var name = "video_" + rand + ".webm";
+
+            downloadLink.setAttribute("download", name);
+            downloadLink.setAttribute("name", name);
+        };
+
+        mediaRecorder.onpause = function () {
+            log('Paused & state = ' + mediaRecorder.state);
+        }
+
+        mediaRecorder.onresume = function () {
+            log('Resumed  & state = ' + mediaRecorder.state);
+        }
+
+        mediaRecorder.onwarning = function (e) {
+            log('Warning: ' + e);
+        };
+    }
+
+    //点击按钮，启动视频流的采集。重点是getUserMedia函数使用。本案例中，视频采集的入口，是点击页面上的record按钮，也就是下面这个函数的逻辑。
+    function onBtnRecordClicked() {
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                width: 120000, height: 70000,
+                frameRate: { ideal: 10, max: 15 }
+            }
+        }).then(startRecording).catch(errorCallback)
+        recBtn.disabled = true;
+        pauseResBtn.disabled = false;
+        stopBtn.disabled = false;
+    }
+
+    function onBtnStopClicked() {
+        mediaRecorder.stop()
+        videoElement.controls = true;
+        recBtn.disabled = false;
+        pauseResBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+
+    function onPauseResumeClicked() {
+        if (pauseResBtn.textContent === "Pause") {
+            console.log("pause");
+            pauseResBtn.textContent = "Resume";
+            mediaRecorder.pause();
+            stopBtn.disabled = true;
+        } else {
+            console.log("resume");
+            pauseResBtn.textContent = "Pause";
+            mediaRecorder.resume();
+            stopBtn.disabled = false;
+        }
+        recBtn.disabled = true;
+        pauseResBtn.disabled = false;
+    }
+
+
+    function log(message) {
+        dataElement.innerHTML = dataElement.innerHTML + '<br>' + message;
+    }
+    var e, pe, pid, fps, last, offset, step, appendFps; 
+    fps = 0;
+    last = Date.now();
+    step = function () {
+        offset = Date.now() - last;
+        fps += 1;
+        if (offset >= 1000) {
+            last += offset;
+            appendFps(fps);
+            fps = 0;
+        }
+        requestAnimationFrame(step);
+    };
+    //显示fps; 如果未指定元素id，默认<body>标签 
+    appendFps = function (fps) {
+        if (!e) e = document.createElement('span');
+        pe = pid ? document.getElementById(pid) : document.getElementsByTagName('body')[0];
+        e.innerHTML = "fps: " + fps;
+        pe.appendChild(e);
+    }
+    step()
+
+    // navigator.mediaDevices.getUserMedia({
+    //     video: { 
+    //         width: 120000, height: 70000, 
+    //         frameRate: { ideal: 10, max: 15 } 
+    //     }
+    // }).then(gotStream).catch(noStream)
+    // function gotStream(stream) {
+    //     aVideo.srcObject = stream;
+    //     aVideo.onerror = function () {
+    //         stream.stop();
+    //     };
+    //     stream.onended = noStream;
+    //     aVideo.onloadedmetadata = function () {
+    //         aVideo.play()
+    //     };
+    // }
+
+    // function noStream(err) {
+    //     alert(err);
+    // }
+</script>
+
+</html>
