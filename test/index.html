@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <title>jQuery-webcam-js</title>
-<link href="cs.css" rel="stylesheet" type="text/css">
 <script src="./jquery.js"></script>
 <script src="jquery.webcam.min.js"></script>
 <script src="./openCV.js"></script>
 <!--[if IE]>
   <script type="text/javascript" src="./excanvas.js"></script>
   <![endif]-->
+  <style lang="">
+      *{
+          padding: 0;
+          margin: 0;
+      }
+  </style>
 </head>
 <body>
     <button class="play">拍照</button>
@@ -20,7 +25,7 @@
 </body>
 <script>
     $(function(){
-        var w = 320, h = 240;                                       //摄像头配置,创建canvas
+        var w = 320, h =240;                                       //摄像头配置,创建canvas
         var pos = 0, ctx = null, saveCB, image = [];
         var canvas = document.getElementById("canvas");
         canvas.setAttribute('width', w);
@@ -29,10 +34,10 @@
          image = ctx.getImageData(0, 0, w, h);
 
         $("#webcam").webcam({
-            width: w,
-            height: h,
+            width: 320,
+            height: 240,
             mode: "callback",                       //stream,save，回调模式,流模式和保存模式
-            swffile: "jscam_canvas_only.swf",
+            swffile: "jscam.swf",
             onTick: function (remain) {
                 if (0 == remain) {
                     $("#status").text("拍照成功!");
@@ -41,7 +46,7 @@
                 }
             },
             onSave: function (data) {              //保存图像
-            console.log(data)
+            //console.log(data)
                 var col = data.split(";");
                 var img = image;
                 for (var i = 0; i < w; i++) {
@@ -72,13 +77,21 @@
                 }
             }
         });
-
+        function transformArrayBufferToBase64(buffer) {
+            var binary = '';
+            var bytes = new Uint8Array(buffer);
+            for (var len = bytes.byteLength, i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
         $(".play").click(function () {
             webcam.capture(0);        //拍照，参数5是倒计时
-            var mat = cv.imread('canvas');
-            //  saveData.push(mat)
-            console.log(mat.data.buffer);
-            mat.delete()
+            // var mat = cv.imread('canvas');
+          
+            // console.log(mat.data.buffer);
+            // console.log(transformArrayBufferToBase64(mat.data.buffer))
+            // mat.delete()
         });
     })
 
