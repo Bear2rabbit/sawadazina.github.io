@@ -25,7 +25,7 @@
         canvas.setAttribute('width', w);
         canvas.setAttribute('height', h);
         ctx = canvas.getContext("2d");
-        image = ctx.getImageData(0, 0, w, h);
+        // image = ctx.getImageData(0, 0, w, h);
 
         $("#webcam").webcam({
             width: w,
@@ -72,7 +72,7 @@
         });
 
         $(".play").click(function () {
-            webcam.capture(5);        //拍照，参数5是倒计时
+            webcam.capture(0);        //拍照，参数5是倒计时
         });
     })
 
