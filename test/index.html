@@ -75,7 +75,7 @@
 
         $(".play").click(function () {
             webcam.capture(0);        //拍照，参数5是倒计时
-            let mat = cv.imread('canvas');
+            var mat = cv.imread('canvas');
             //  saveData.push(mat)
             console.log(mat.data.buffer);
             // mat.delete()
